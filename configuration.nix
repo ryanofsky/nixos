@@ -5,6 +5,8 @@
 { config, pkgs, ... }:
 
 {
+  nix.nixPath = [ "nixpkgs=/nix/nixpkgs" "nixos-config=/etc/nixos/configuration.nix" ];
+
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
@@ -34,9 +36,30 @@
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
-  # environment.systemPackages = with pkgs; [
-  #   wget vim
-  # ];
+  environment.systemPackages = with pkgs; [
+    bindfs
+    bup
+    colordiff
+    emby
+    encfs
+    file
+    git
+    gptfdisk
+    iotop
+    parted
+    psmisc
+    python3
+    rmlint
+    screen
+    smartmontools
+    socat
+    sshfs-fuse
+    stun
+    unzip
+    vim
+    zerotierone
+    zip
+  ];
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
@@ -47,10 +70,17 @@
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
+  services.openssh.enable = true;
+  services.openssh.permitRootLogin = "yes";
+
+  services.emby.enable = true;
+  systemd.services.emby.wantedBy = pkgs.lib.mkForce [ ];
+
+  services.zerotierone.enable = true;
+  services.zerotierone.joinNetworks = [ "af78bf943692b694" ];
 
   # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
+  networking.firewall.allowedTCPPorts = [ 22 8096 8920 ];
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;

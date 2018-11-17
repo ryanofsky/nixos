@@ -23,10 +23,6 @@
       fsType = "vfat";
     };
 
-  swapDevices =
-    [ { device = "/dev/disk/by-uuid/f3170a6c-8140-43c1-b259-dfa80650e4c1"; }
-    ];
-
   nix.maxJobs = lib.mkDefault 1;
   virtualisation.virtualbox.guest.enable = true;
 }
