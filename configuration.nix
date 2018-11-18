@@ -80,6 +80,23 @@
   services.zerotierone.enable = true;
   services.zerotierone.joinNetworks = [ "af78bf943692b694" ];
 
+  # https://github.com/systemd/systemd/issues/2741#issuecomment-433979748
+  systemd.services."netns@" = {
+    after = [ "network.target" ];
+    description = "Named network namespace %I.";
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = "yes";
+      PrivateNetwork = "yes";
+      ExecStart = [
+        ''${pkgs.iproute}/bin/ip netns add %I''
+        ''${pkgs.utillinux}/bin/umount /var/run/netns/%I''
+        ''${pkgs.utillinux}/bin/mount --bind /proc/self/ns/net /var/run/netns/%I''
+      ];
+      ExecStop = ''${pkgs.iproute}/bin/ip netns delete %I'';
+    };
+  };
+
   # Open ports in the firewall.
   networking.firewall.allowedTCPPorts = [ 22 8096 8920 ];
   # networking.firewall.allowedUDPPorts = [ ... ];
