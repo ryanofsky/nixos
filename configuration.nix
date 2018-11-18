@@ -80,6 +80,8 @@
   services.zerotierone.enable = true;
   services.zerotierone.joinNetworks = [ "af78bf943692b694" ];
 
+  programs.vim.defaultEditor = true;
+
   # https://github.com/systemd/systemd/issues/2741#issuecomment-433979748
   systemd.services."netns@" = {
     after = [ "network.target" ];
