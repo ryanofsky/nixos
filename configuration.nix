@@ -46,6 +46,7 @@
     git
     gptfdisk
     iotop
+    openvpn
     parted
     psmisc
     python3
