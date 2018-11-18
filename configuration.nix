@@ -82,6 +82,11 @@
 
   programs.vim.defaultEditor = true;
 
+  programs.bash.interactiveShellInit = ''
+    shopt -s histappend
+    export HISTCONTROL=ignoreboth
+  '';
+
   # https://github.com/systemd/systemd/issues/2741#issuecomment-433979748
   systemd.services."netns@" = {
     after = [ "network.target" ];
