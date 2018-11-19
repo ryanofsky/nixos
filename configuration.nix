@@ -87,6 +87,64 @@
     export HISTCONTROL=ignoreboth
   '';
 
+  # https://nixos.wiki/wiki/OpenVPN
+  services.openvpn.servers = let
+    name = "pia";
+    path = (pkgs.lib.getAttr "openvpn-${name}" config.systemd.services).path;
+    net = pkgs.writeScript "openvpn-${name}-net" ''
+      #!/bin/sh
+      export PATH=${path}
+
+      PNS=${name}
+
+      rx() {
+        echo "$@"
+        "$@"
+      }
+
+      nx() {
+        echo ip netns exec "$PNS" "$@"
+        ip netns exec "$PNS" "$@"
+      }
+
+      up() {
+        rx ip link set dev "$dev" netns "$PNS"
+        nx ip addr add dev "$dev" local "$ifconfig_local" peer "$ifconfig_remote"
+        nx ip link set dev "$dev" up
+        nx ip route add default via "$route_gateway_1" dev "$dev"
+        mkdir -p /etc/netns/"$PNS"
+        touch /etc/netns/"$PNS"/resolv.conf
+        script_type=up nx ${pkgs.update-resolv-conf}/libexec/openvpn/update-resolv-conf
+      }
+
+      down() {
+        script_type=down nx ${pkgs.update-resolv-conf}/libexec/openvpn/update-resolv-conf
+        nx ip link set dev "$dev" netns 1
+        rx ip addr add dev "$dev" local "$ifconfig_local" peer "$ifconfig_remote"
+      }
+
+      CMD="$1"
+      shift
+      "$CMD" "$@"
+    '';
+  in {
+    pia = {
+      config = ''
+        config /etc/nixos/pia/openvpn-ip/Mexico.ovpn
+        auth-user-pass /etc/nixos/pia/pia.auth
+        #verb 4
+        script-security 2
+        route-noexec
+        route-up "${net} up"
+        route-pre-down "${net} down"
+      '';
+      autoStart = true;
+    };
+  };
+  systemd.services."openvpn-pia".serviceConfig.Restart = pkgs.lib.mkForce "no";
+  systemd.services."openvpn-pia".bindsTo = pkgs.lib.mkForce [ "netns@pia.service" ];
+  systemd.services."openvpn-pia".after = pkgs.lib.mkForce [ "netns@pia.service" ];
+
   # https://github.com/systemd/systemd/issues/2741#issuecomment-433979748
   systemd.services."netns@" = {
     after = [ "network.target" ];
