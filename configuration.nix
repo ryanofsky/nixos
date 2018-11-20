@@ -84,15 +84,17 @@
   systemd.services.deluged.wantedBy = pkgs.lib.mkForce [ ];
   systemd.services.deluged.serviceConfig.PrivateMounts = pkgs.lib.mkForce "yes";
   systemd.services.deluged.serviceConfig.PrivateNetwork = pkgs.lib.mkForce "yes";
+  systemd.services.deluged.serviceConfig.BindPaths = pkgs.lib.mkForce "/etc/netns/pia/resolv.conf:/etc/resolv.conf";
   systemd.services.deluged.unitConfig.JoinsNamespaceOf = pkgs.lib.mkForce "netns@pia.service";
 
   services.deluge.web.enable = true;
   systemd.services.delugeweb.after = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.delugeweb.bindsTo = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.delugeweb.wantedBy = pkgs.lib.mkForce [ ];
-  systemd.services.delugeweb.unitConfig.JoinsNamespaceOf = pkgs.lib.mkForce "netns@pia.service";
   systemd.services.delugeweb.serviceConfig.PrivateMounts = pkgs.lib.mkForce "yes";
   systemd.services.delugeweb.serviceConfig.PrivateNetwork = pkgs.lib.mkForce "yes";
+  systemd.services.delugeweb.serviceConfig.BindPaths = pkgs.lib.mkForce "/etc/netns/pia/resolv.conf:/etc/resolv.conf";
+  systemd.services.delugeweb.unitConfig.JoinsNamespaceOf = pkgs.lib.mkForce "netns@pia.service";
 
   services.zerotierone.enable = true;
   services.zerotierone.joinNetworks = [ "af78bf943692b694" ];
@@ -163,7 +165,28 @@
   systemd.services."openvpn-pia".after = pkgs.lib.mkForce [ "netns@pia.service" ];
 
   # https://github.com/systemd/systemd/issues/2741#issuecomment-433979748
-  systemd.services."netns@" = {
+  systemd.services."netns@" = let
+    netns-add = pkgs.writeScript "netns-add" ''
+      #!/bin/sh
+      set -e
+      set -x
+      ${pkgs.iproute}/bin/ip netns add "$1"
+      ${pkgs.utillinux}/bin/umount /var/run/netns/"$1"
+      ${pkgs.utillinux}/bin/mount --bind /proc/self/ns/net /var/run/netns/"$1"
+      ${pkgs.utillinux}/bin/nsenter -t 1 -m ${pkgs.utillinux}/bin/mount --bind /proc/self/ns/net /var/run/netns/"$1"
+      ${pkgs.coreutils}/bin/mkdir -p /etc/netns/"$1"
+      ${pkgs.coreutils}/bin/touch /etc/netns/"$1"/resolv.conf
+      ${pkgs.utillinux}/bin/mount --bind /etc/netns/"$1"/resolv.conf /etc/resolv.conf # Doesn't work
+    '';
+    netns-del = pkgs.writeScript "netns-del" ''
+      #!/bin/sh
+      set -e
+      set -x
+      ${pkgs.utillinux}/bin/umount /var/run/netns/"$1"
+      ${pkgs.utillinux}/bin/nsenter -t 1 -m ${pkgs.utillinux}/bin/umount /var/run/netns/"$1"
+      ${pkgs.iproute}/bin/ip netns del "$1"
+    '';
+  in {
     after = [ "network.target" ];
     description = "Named network namespace %I.";
     unitConfig.StopWhenUnneeded = true;
@@ -172,17 +195,8 @@
       RemainAfterExit = "yes";
       PrivateMounts = "yes";
       PrivateNetwork = "yes";
-      ExecStartPre = [
-        ''${pkgs.coreutils}/bin/mkdir -p /etc/netns/pia''
-        ''${pkgs.coreutils}/bin/touch /etc/netns/pia/resolv.conf''
-        ''${pkgs.iproute}/bin/ip netns add %I && ${pkgs.utillinux}/bin/umount /var/run/netns/%I''
-      ];
-      ExecStart = [
-        ''${pkgs.utillinux}/bin/mount --bind /proc/self/ns/net /var/run/netns/%I''
-        ''${pkgs.utillinux}/bin/mount --bind /etc/netns/%I/resolv.conf /etc/resolv.conf''
-        ''${pkgs.utillinux}/bin/nsenter -t 1 -m ${pkgs.utillinux}/bin/mount --bind /proc/self/ns/net /var/run/netns/%I''
-      ];
-      ExecStop = ''${pkgs.iproute}/bin/ip netns delete %I'';
+      ExecStart = ''${netns-add} %I'';
+      ExecStop = ''${netns-del} %I'';
     };
   };
 
