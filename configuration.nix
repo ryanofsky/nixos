@@ -76,7 +76,13 @@
   services.openssh.permitRootLogin = "yes";
 
   services.emby.enable = true;
+  systemd.services.emby.after = pkgs.lib.mkForce [ "netns@pia.service" ];
+  systemd.services.emby.bindsTo = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.emby.wantedBy = pkgs.lib.mkForce [ ];
+  systemd.services.emby.serviceConfig.PrivateMounts = pkgs.lib.mkForce "yes";
+  systemd.services.emby.serviceConfig.PrivateNetwork = pkgs.lib.mkForce "yes";
+  systemd.services.emby.serviceConfig.BindPaths = pkgs.lib.mkForce "/etc/netns/pia/resolv.conf:/etc/resolv.conf";
+  systemd.services.emby.unitConfig.JoinsNamespaceOf = pkgs.lib.mkForce "netns@pia.service";
 
   services.deluge.enable = true;
   systemd.services.deluged.after = pkgs.lib.mkForce [ "netns@pia.service" ];
