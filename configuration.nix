@@ -50,6 +50,7 @@
     openvpn
     parted
     psmisc
+    python2
     python3
     rmlint
     screen
