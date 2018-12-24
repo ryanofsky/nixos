@@ -80,7 +80,6 @@
   systemd.services.emby.after = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.emby.bindsTo = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.emby.wantedBy = pkgs.lib.mkForce [ ];
-  systemd.services.emby.serviceConfig.PrivateMounts = pkgs.lib.mkForce "yes";
   systemd.services.emby.serviceConfig.PrivateNetwork = pkgs.lib.mkForce "yes";
   systemd.services.emby.serviceConfig.BindPaths = pkgs.lib.mkForce "/etc/netns/pia/resolv.conf:/etc/resolv.conf";
   systemd.services.emby.unitConfig.JoinsNamespaceOf = pkgs.lib.mkForce "netns@pia.service";
@@ -89,7 +88,6 @@
   systemd.services.deluged.after = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.deluged.bindsTo = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.deluged.wantedBy = pkgs.lib.mkForce [ ];
-  systemd.services.deluged.serviceConfig.PrivateMounts = pkgs.lib.mkForce "yes";
   systemd.services.deluged.serviceConfig.PrivateNetwork = pkgs.lib.mkForce "yes";
   systemd.services.deluged.serviceConfig.BindPaths = pkgs.lib.mkForce "/etc/netns/pia/resolv.conf:/etc/resolv.conf";
   systemd.services.deluged.unitConfig.JoinsNamespaceOf = pkgs.lib.mkForce "netns@pia.service";
@@ -98,7 +96,6 @@
   systemd.services.delugeweb.after = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.delugeweb.bindsTo = pkgs.lib.mkForce [ "netns@pia.service" ];
   systemd.services.delugeweb.wantedBy = pkgs.lib.mkForce [ ];
-  systemd.services.delugeweb.serviceConfig.PrivateMounts = pkgs.lib.mkForce "yes";
   systemd.services.delugeweb.serviceConfig.PrivateNetwork = pkgs.lib.mkForce "yes";
   systemd.services.delugeweb.serviceConfig.BindPaths = pkgs.lib.mkForce "/etc/netns/pia/resolv.conf:/etc/resolv.conf";
   systemd.services.delugeweb.unitConfig.JoinsNamespaceOf = pkgs.lib.mkForce "netns@pia.service";
@@ -180,17 +177,13 @@
       ${pkgs.iproute}/bin/ip netns add "$1"
       ${pkgs.utillinux}/bin/umount /var/run/netns/"$1"
       ${pkgs.utillinux}/bin/mount --bind /proc/self/ns/net /var/run/netns/"$1"
-      ${pkgs.utillinux}/bin/nsenter -t 1 -m ${pkgs.utillinux}/bin/mount --bind /proc/self/ns/net /var/run/netns/"$1"
       ${pkgs.coreutils}/bin/mkdir -p /etc/netns/"$1"
       ${pkgs.coreutils}/bin/touch /etc/netns/"$1"/resolv.conf
-      ${pkgs.utillinux}/bin/mount --bind /etc/netns/"$1"/resolv.conf /etc/resolv.conf # Doesn't work
     '';
     netns-del = pkgs.writeScript "netns-del" ''
       #!/bin/sh
       set -e
       set -x
-      ${pkgs.utillinux}/bin/umount /var/run/netns/"$1"
-      ${pkgs.utillinux}/bin/nsenter -t 1 -m ${pkgs.utillinux}/bin/umount /var/run/netns/"$1"
       ${pkgs.iproute}/bin/ip netns del "$1"
     '';
   in {
@@ -200,7 +193,6 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = "yes";
-      PrivateMounts = "yes";
       PrivateNetwork = "yes";
       ExecStart = ''${netns-add} %I'';
       ExecStop = ''${netns-del} %I'';
