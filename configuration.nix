@@ -143,7 +143,6 @@
       down() {
         script_type=down nx ${pkgs.update-resolv-conf}/libexec/openvpn/update-resolv-conf
         nx ip link set dev "$dev" netns 1
-        rx ip addr add dev "$dev" local "$ifconfig_local" peer "$ifconfig_remote"
       }
 
       CMD="$1"
