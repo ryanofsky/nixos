@@ -189,7 +189,6 @@
   in {
     after = [ "network.target" ];
     description = "Named network namespace %I.";
-    unitConfig.StopWhenUnneeded = true;
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = "yes";
